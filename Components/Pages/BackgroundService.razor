@@ -1,0 +1,57 @@
+﻿@page "/job"
+@using Ingestor.Utility
+@using Quartz
+@inject PollingSettings Settings
+@inject ISchedulerFactory SchedulerFactory
+@rendermode InteractiveServer
+
+<div class=" p-4 shadow-sm">
+    <h3>Настройка интервала опроса</h3>
+
+    <div class="alert alert-secondary">
+        Текущий активный интервал: <strong>@Settings.IntervalSeconds сек.</strong>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Выбранный интервал для установки: <b>@Settings.NewInterval сек.</b></label>
+        <input type="range" class="form-range"
+               min="1" max="60" step="1"
+               @bind-value="Settings.NewInterval"
+               @bind-value:event="oninput">
+    </div>
+
+    <button class="btn btn-primary" @onclick="SaveAndApply">
+        Установить @Settings.NewInterval сек.
+    </button>
+</div>
+
+@if (isSaved)
+{
+    <div class="alert alert-success mt-2">Интервал успешно обновлен!</div>
+}
+
+
+@code {
+    private bool isSaved = false;
+
+    private async Task SaveAndApply()
+    {
+        var scheduler = await SchedulerFactory.GetScheduler();
+        var triggerKey = new TriggerKey("ApiPollingTrigger");
+        Settings.IntervalSeconds = Settings.NewInterval;
+        var newTrigger = TriggerBuilder.Create()
+            .WithIdentity(triggerKey)
+            .StartNow()
+            .WithSimpleSchedule(x => x
+                .WithIntervalInSeconds(Settings.IntervalSeconds)
+                .RepeatForever())
+            .Build();
+
+        await scheduler.RescheduleJob(triggerKey, newTrigger);
+
+        isSaved = true;
+        StateHasChanged();
+        await Task.Delay(2000);
+        isSaved = false;
+    }
+}
