@@ -20,7 +20,6 @@ namespace Ingestor.BackgroundServices
         {
             _logger.LogInformation($"[Quartz] Опрос API запущен в {DateTime.Now:HH:mm:ss}");
             await _service.RetrieveDataAsync();
-            
         }
     }
 }

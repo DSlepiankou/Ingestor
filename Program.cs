@@ -14,14 +14,16 @@ namespace Ingestor
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            //DI
             builder.Services.AddSingleton<PollingSettings>();
             builder.Services.AddTransient<IIngestorService, IngestorService>();
             builder.Services.AddTransient<IIngestorService, IngestorService>();
+
             builder.Services.AddHttpClient("WeakApi", x =>
             {
+                var baseAddress = builder.Configuration["ApiSettings:BaseUrl"]
+                      ?? "http://localhost:8080";
                 x.DefaultRequestHeaders.Add("X-Api-Key", "supersecret");
-                x.BaseAddress = new Uri("http://localhost:5000/");
+                x.BaseAddress = new Uri(baseAddress);
             });
 
             builder.Services.AddQuartz(q =>
@@ -41,6 +43,7 @@ namespace Ingestor
             builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
             var app = builder.Build();
+
             app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
             app.UseAntiforgery();
             app.MapStaticAssets();
