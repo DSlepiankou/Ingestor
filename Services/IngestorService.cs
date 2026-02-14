@@ -1,5 +1,6 @@
 ﻿using Ingestor.Interfaces;
 using Ingestor.Models;
+using MassTransit;
 using Polly;
 using Polly.Retry;
 using Quartz.Logging;
@@ -12,11 +13,15 @@ namespace Ingestor.Services
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<IngestorService> _logger;
+        private readonly IPublishEndpoint _publishEndpoint;
 
-        public IngestorService(IHttpClientFactory httpClientFactory, ILogger<IngestorService> logger)
+        public IngestorService(IHttpClientFactory httpClientFactory,
+            ILogger<IngestorService> logger,
+            IPublishEndpoint publishEndpoint)
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _publishEndpoint = publishEndpoint;
         }
 
         public async Task RetrieveDataAsync()
@@ -24,10 +29,14 @@ namespace Ingestor.Services
             var response = await FetchDataWithRetryAsync();
             try
             {
-                if (response != null)
+                if (!string.IsNullOrEmpty(response))
                 {
-                    var messages = JsonSerializer.Deserialize<List<MeterData>>(response,
-                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    await _publishEndpoint.Publish(new MeterDataMessage(
+                        JsonPayload: response,
+                        CapturedAt: DateTime.UtcNow
+                    ));
+
+                    Console.WriteLine("Данные успешно отправлены в RabbitMQ");
                 }
             }
             catch (Exception ex)
@@ -79,7 +88,8 @@ namespace Ingestor.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError($"After all attempts, api returned: {response.StatusCode}");
-                    return null;
+                    throw new InvalidOperationException("Not success");
+
                 }
 
                 return await response.Content.ReadAsStringAsync();
@@ -87,7 +97,7 @@ namespace Ingestor.Services
             catch (Exception ex)
             {
                 _logger.LogError($"kaput: {ex.Message}");
-                return null;
+                throw new InvalidOperationException("Api pizdec");
             }
         }
     }

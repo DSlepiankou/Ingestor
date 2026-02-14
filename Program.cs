@@ -3,6 +3,7 @@ using Ingestor.Components;
 using Ingestor.Interfaces;
 using Ingestor.Services;
 using Ingestor.Utility;
+using MassTransit;
 using Microsoft.AspNetCore.Server.IIS;
 using Quartz;
 
@@ -17,13 +18,28 @@ namespace Ingestor
             builder.Services.AddSingleton<PollingSettings>();
             builder.Services.AddTransient<IIngestorService, IngestorService>();
             builder.Services.AddTransient<IIngestorService, IngestorService>();
-
             builder.Services.AddHttpClient("WeakApi", x =>
             {
                 var baseAddress = builder.Configuration["ApiSettings:BaseUrl"]
                       ?? "http://localhost:8080";
                 x.DefaultRequestHeaders.Add("X-Api-Key", "supersecret");
                 x.BaseAddress = new Uri(baseAddress);
+            });
+
+            builder.Services.AddMassTransit(x =>
+            {
+                x.SetKebabCaseEndpointNameFormatter();
+
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    cfg.Host("rabbitmq", "/", h =>
+                    {
+                        h.Username("guest");
+                        h.Password("guest");
+                    });
+
+                    cfg.ConfigureEndpoints(context);
+                });
             });
 
             builder.Services.AddQuartz(q =>

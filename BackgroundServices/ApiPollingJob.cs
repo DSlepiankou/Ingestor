@@ -18,7 +18,7 @@ namespace Ingestor.BackgroundServices
 
         public async Task Execute(IJobExecutionContext context)
         {
-            _logger.LogInformation($"[Quartz] Опрос API запущен в {DateTime.Now:HH:mm:ss}");
+            _logger.LogInformation($"[Quartz] Started {DateTime.Now:HH:mm:ss}");
             await _service.RetrieveDataAsync();
         }
     }
