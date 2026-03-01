@@ -37,7 +37,7 @@ namespace Ingestor
                         h.Username("guest");
                         h.Password("guest");
                     });
-
+                    cfg.UseRawJsonSerializer();
                     cfg.ConfigureEndpoints(context);
                 });
             });
